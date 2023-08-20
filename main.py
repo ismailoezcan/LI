@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 import requests
 from tqdm import tqdm
+from bs4 import BeautifulSoup
 import regex as re
 
 import os, sys
@@ -19,9 +20,27 @@ logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 while True:
     try:
         logging.info("Loading data and saving it to kickbase.csv")
-        gesamt = pd.read_html(
-            "https://www.ligainsider.de/stats/kickbase/marktwerte/gesamt/"
-        )[0]
+
+        url = "https://www.ligainsider.de/stats/kickbase/marktwerte/gesamt/"
+        r = requests.get(url)
+
+        html_table = BeautifulSoup(r.text, features="lxml").find("table")
+        r.close()
+
+        df = pd.read_html(str(html_table))[0]
+        regex = re.compile(r".*\/\d+\/")
+
+        df["Link"] = [
+            "https://www.ligainsider.de" + link.get("href")
+            for link in html_table.find_all("a")
+            if not regex.search(link.get("href")[-8:])
+        ]
+
+        # gesamt = pd.read_html(
+        #     "https://www.ligainsider.de/stats/kickbase/marktwerte/gesamt/"
+        # )[0]
+
+        gesamt = df
 
         verlierer_t = pd.read_html(
             "https://www.ligainsider.de/stats/kickbase/marktwerte/tag/verlierer/"
